@@ -2,7 +2,7 @@ import 'package:elibra_mobile/assets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:elibra_mobile/profile/profile_page.dart';
-import 'package:elibra_mobile/authentication/student_login.dart';
+import 'package:elibra_mobile/authentication/patron_login.dart';
 
 class Homepage extends StatelessWidget {
   const Homepage({super.key});
@@ -135,7 +135,7 @@ class Homepage extends StatelessWidget {
 
                                 Navigator.pushAndRemoveUntil(
                                   context,
-                                  MaterialPageRoute(builder: (context) => const StudentLoginPage()),
+                                  MaterialPageRoute(builder: (context) => const PatronLoginPage()),
                                   (route) => false, // remove all previous routes
                                 );
                               },

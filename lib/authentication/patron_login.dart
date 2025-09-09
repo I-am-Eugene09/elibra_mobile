@@ -1,22 +1,25 @@
+import 'package:elibra_mobile/services/config_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:elibra_mobile/assets.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:flutter/gestures.dart';
+import 'package:elibra_mobile/authentication/patron_signup.dart'; 
+// import 'package:elibra_mobile/services/config_auth.dart'; // make sure this matches your file name
 
-import 'package:elibra_mobile/authentication/student_signup.dart'; //signup file patch
-
-
-
-class StudentLoginPage extends StatefulWidget {
-  const StudentLoginPage({super.key});
+class PatronLoginPage extends StatefulWidget {
+  const PatronLoginPage({super.key});
 
   @override
-  State<StudentLoginPage> createState() => _StudentLoginPageState();
+  State<PatronLoginPage> createState() => _PatronLoginPageState();
 }
 
-class _StudentLoginPageState extends State<StudentLoginPage> {
+class _PatronLoginPageState extends State<PatronLoginPage> {
   bool _isPasswordVisible = false;
   late TapGestureRecognizer _signUpTap;
+
+  // ✅ Controllers for text fields
+  final TextEditingController emailController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
 
   @override
   void initState() {
@@ -25,7 +28,7 @@ class _StudentLoginPageState extends State<StudentLoginPage> {
       ..onTap = () {
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => const StudentSignUpPage()),
+          MaterialPageRoute(builder: (context) => const PatronSignUpPage()),
         );
       };
   }
@@ -33,14 +36,14 @@ class _StudentLoginPageState extends State<StudentLoginPage> {
   @override
   void dispose() {
     _signUpTap.dispose();
+    emailController.dispose();
+    passwordController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
-
-    // Limit form width on large screens (tablet/PC)
     double maxFormWidth = screenWidth < 600 ? screenWidth * 0.9 : 500;
 
     return Scaffold(
@@ -113,8 +116,9 @@ class _StudentLoginPageState extends State<StudentLoginPage> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         // Email
-                        const TextField(
-                          decoration: InputDecoration(
+                        TextField(
+                          controller: emailController,
+                          decoration: const InputDecoration(
                             labelText: 'Email',
                           ),
                         ),
@@ -122,6 +126,7 @@ class _StudentLoginPageState extends State<StudentLoginPage> {
 
                         // Password
                         TextField(
+                          controller: passwordController,
                           obscureText: !_isPasswordVisible,
                           decoration: InputDecoration(
                             labelText: 'Password',
@@ -159,8 +164,23 @@ class _StudentLoginPageState extends State<StudentLoginPage> {
                         MouseRegion(
                           cursor: SystemMouseCursors.click,
                           child: ElevatedButton(
-                            onPressed: () {
-                               Navigator.pushReplacementNamed(context, '/home');
+                            onPressed: () async {
+                              final result = await ApiService.login(
+                                email: emailController.text.trim(),
+                                password: passwordController.text.trim(),
+                              );
+
+                              if (!result['error']) {
+                                Navigator.pushReplacementNamed(context, '/home');
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      result['message'] ?? 'Login failed',
+                                    ),
+                                  ),
+                                );
+                              }
                             },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.primaryGreen,

@@ -1,7 +1,7 @@
 // import 'package:elibra_mobile/main_page/homepage.dart';
 import 'package:flutter/material.dart';
 import 'package:elibra_mobile/profile/profile_page.dart';
-import '../authentication/student_login.dart';
+import '../authentication/patron_login.dart';
 import '../e_resources/e_resources.dart';
 import '../e_resources/access_resources.dart';
 import '../main_page/borrowed_history.dart';
@@ -23,10 +23,10 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         fontFamily: 'Poppins',
       ),
-      // home: const StudentLoginPage(),
+      // home: const PatronLoginPage(),
       initialRoute: '/login',
       routes: {
-        '/login': (context) => const StudentLoginPage(),
+        '/login': (context) => const PatronLoginPage(),
         '/profile': (context) => const ProfilePage(),
         '/eresources': (context) => const EResources(),
         '/access': (context) => const AccessResources(),

@@ -2,14 +2,13 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class ApiService {
-  // Do NOT include '/api' here to avoid '/api/api' duplication in endpoints
-  static const String baseUrl = 'http://192.168.56.1:8000';
+  static const String baseUrl = 'http://192.168.11.1:8000';
 
   // Get Campuses
   static Future<Map<String, dynamic>> getCampuses() async {
     try {
       final response = await http.get(
-        Uri.parse('$baseUrl/api/campuses'),
+        Uri.parse('$baseUrl/api/all-c'),
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
@@ -17,9 +16,10 @@ class ApiService {
       );
 
       if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
         return {
           'error': false,
-          'data': jsonDecode(response.body),
+          'data': List<Map<String, dynamic>>.from(data),
         };
       } else {
         return {
@@ -34,6 +34,47 @@ class ApiService {
       };
     }
   }
+
+  //Login User 
+static Future<Map<String, dynamic>> login({
+  required String email,
+  required String password,
+}) async {
+  try {
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/auth/login'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: jsonEncode({
+        'user': email,
+        'password': password,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return {
+        'error': false,
+        'data': data,
+      };
+    } else {
+      final body = jsonDecode(response.body);
+      return {
+        'error': true,
+        'message': body['message'] ?? 'Login failed',
+        'errors': body['errors'] ?? {},
+      };
+    }
+  } catch (e) {
+    return {
+      'error': true,
+      'message': 'Error: $e',
+    };
+  }
+}
+
 
   // Register User
   static Future<Map<String, dynamic>> registerUser({
@@ -111,42 +152,6 @@ class ApiService {
     }
   }
 
-  // Example: Verify OTP
-  /*static Future<Map<String, dynamic>> verifyOTP(String email, String otp) async {
-    try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/api/verify-otp'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: jsonEncode({
-          'email': email,
-          'otp': otp,
-        }),
-      );
-
-      if (response.statusCode == 200) {
-        return {
-          'error': false,
-          'data': jsonDecode(response.body),
-        };
-      } else {
-        final body = jsonDecode(response.body);
-        return {
-          'error': true,
-          'message': body['message'] ?? 'Failed to verify OTP',
-          'errors': body['errors'] ?? {},
-          'status': response.statusCode,
-        };
-      }
-    } catch (e) {
-      return {
-        'error': true,
-        'message': 'Network error: $e',
-      };
-    }
-  }*/
   static Future<Map<String, dynamic>> verifyOTP({
   required String token,
   required String otp,

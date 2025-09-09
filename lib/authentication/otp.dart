@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../assets.dart';
-import 'package:elibra_mobile/services/api.dart';
+import 'package:elibra_mobile/services/config_auth.dart';
 // import 'package:flutter_svg/svg.dart';
 
 class OTPVerificationScreen extends StatefulWidget {

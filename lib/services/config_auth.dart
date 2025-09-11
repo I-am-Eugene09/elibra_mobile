@@ -1,30 +1,43 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'api.dart';
 
 class ApiService {
-  static const String baseUrl = 'http://192.168.11.1:8000';
-
-  // Get Campuses
-  static Future<Map<String, dynamic>> getCampuses() async {
+  // Login User 
+  static Future<Map<String, dynamic>> login({
+    required String email,
+    required String password,
+  }) async {
     try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/api/all-c'),
-        headers: {
+      final response = await http.post(
+        Uri.parse(Api.path('/auth/login')),
+        headers: const {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
+        body: jsonEncode({
+          'user': email,
+          'password': password,
+        }),
       );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return {
           'error': false,
-          'data': List<Map<String, dynamic>>.from(data),
+          'data': data,
         };
-      } else {
+      } else if (response.statusCode == 403) {
         return {
           'error': true,
-          'message': 'Failed to fetch campuses',
+          'message': 'Your account is pending approval by the admin.',
+        };
+      } else {
+        final body = jsonDecode(response.body);
+        return {
+          'error': true,
+          'message': body['message'] ?? 'Login failed',
+          'errors': body['errors'] ?? {},
         };
       }
     } catch (e) {
@@ -34,47 +47,6 @@ class ApiService {
       };
     }
   }
-
-  //Login User 
-static Future<Map<String, dynamic>> login({
-  required String email,
-  required String password,
-}) async {
-  try {
-    final response = await http.post(
-      Uri.parse('$baseUrl/api/auth/login'),
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-      body: jsonEncode({
-        'user': email,
-        'password': password,
-      }),
-    );
-
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      return {
-        'error': false,
-        'data': data,
-      };
-    } else {
-      final body = jsonDecode(response.body);
-      return {
-        'error': true,
-        'message': body['message'] ?? 'Login failed',
-        'errors': body['errors'] ?? {},
-      };
-    }
-  } catch (e) {
-    return {
-      'error': true,
-      'message': 'Error: $e',
-    };
-  }
-}
-
 
   // Register User
   static Future<Map<String, dynamic>> registerUser({
@@ -88,9 +60,8 @@ static Future<Map<String, dynamic>> login({
   }) async {
     try {
       final response = await http.post(
-        // Adjust to your actual Laravel route; assumes it's namespaced under /api
-        Uri.parse('$baseUrl/api/auth/register'),
-        headers: {
+        Uri.parse(Api.path('/auth/register')),
+        headers: const {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
@@ -127,52 +98,52 @@ static Future<Map<String, dynamic>> login({
   }
 
   // Example: Send OTP
-  static Future<Map<String, dynamic>> sendOTP(String email) async {
-    try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/api/send-otp'),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({
-          'email': email,
-        }),
-      );
+  // static Future<Map<String, dynamic>> sendOTP(String email) async {
+  //   try {
+  //     final response = await http.post(
+  //       Uri.parse(Api.path('/send-otp')),
+  //       headers: const {
+  //         'Content-Type': 'application/json',
+  //       },
+  //       body: jsonEncode({
+  //         'email': email,
+  //       }),
+  //     );
 
-      if (response.statusCode == 200) {
-        return {
-          'error': false,
-          'data': jsonDecode(response.body),
-        };
-      } else {
-        throw Exception('Failed to send OTP');
-      }
-    } catch (e) {
-      throw Exception('Error: $e');
-    }
-  }
+  //     if (response.statusCode == 200) {
+  //       return {
+  //         'error': false,
+  //         'data': jsonDecode(response.body),
+  //       };
+  //     } else {
+  //       throw Exception('Failed to send OTP');
+  //     }
+  //   } catch (e) {
+  //     throw Exception('Error: $e');
+  //   }
+  // }
 
   static Future<Map<String, dynamic>> verifyOTP({
-  required String token,
-  required String otp,
-}) async {
-  try {
-    final res = await http.post(
-      Uri.parse('$baseUrl/api/auth/verify-email'),
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
-      body: jsonEncode({'otp': otp}),
-    );
-    if (res.statusCode == 200) {
-      return {'error': false, 'data': jsonDecode(res.body)};
+    required String token,
+    required String otp,
+  }) async {
+    try {
+      final res = await http.post(
+        Uri.parse(Api.path('/auth/verify-email')),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({'otp': otp}),
+      );
+      if (res.statusCode == 200) {
+        return {'error': false, 'data': jsonDecode(res.body)};
+      }
+      final body = jsonDecode(res.body);
+      return {'error': true, 'message': body['message'] ?? 'Failed', 'status': res.statusCode};
+    } catch (e) {
+      return {'error': true, 'message': 'Network error: $e'};
     }
-    final body = jsonDecode(res.body);
-    return {'error': true, 'message': body['message'] ?? 'Failed', 'status': res.statusCode};
-  } catch (e) {
-    return {'error': true, 'message': 'Network error: $e'};
   }
-}
 }

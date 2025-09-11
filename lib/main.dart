@@ -5,6 +5,10 @@ import '../authentication/patron_login.dart';
 import '../e_resources/e_resources.dart';
 import '../e_resources/access_resources.dart';
 import '../main_page/borrowed_history.dart';
+import '../fines/fines.dart';
+import '../sections/general_section.dart';
+import '../sections/serial_section.dart';
+import '../sections/thesis_section.dart';
 import 'bottom_nav.dart';
 
 
@@ -31,7 +35,11 @@ class MyApp extends StatelessWidget {
         '/eresources': (context) => const EResources(),
         '/access': (context) => const AccessResources(),
         '/borrowed_history': (context) => const BorrowedHistory(),
-        '/home': (context) => const BottomNav(), 
+        '/fines': (context) => const FinesPage(),
+        '/general': (context) => const GeneralSectionPage(),
+        '/serial': (context) => const SerialSectionPage(),
+        '/thesis': (context) => const ThesisSectionPage(),
+        '/home': (context) => const BottomNav(),
       },
     );
   }

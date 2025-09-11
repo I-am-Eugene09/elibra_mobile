@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../assets.dart';
+import 'update_profile.dart';
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
@@ -7,6 +8,7 @@ class ProfilePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.backgroundColor,
       appBar: AppBar(
         centerTitle: true,
         title: const Text('Profile'),
@@ -17,163 +19,158 @@ class ProfilePage extends StatelessWidget {
         ),
         backgroundColor: AppColors.backgroundColor,
         elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.edit, color: AppColors.primaryGreen),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (context) => const UpdateProfilePage()),
+              );
+            },
+          )
+        ],
       ),
+
+      // ✅ Body
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(18),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8), // Rounded square
-                  child: Image.asset(
-                    "assets/images/Anya.jpg", // replace with your image path
-                    width: 75,
-                    height: 75,
-                    fit: BoxFit.cover,
+            // 👤 Profile Header (matches Homepage style)
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: AppColors.primaryGreen.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.asset(
+                      "assets/images/Anya.jpg",
+                      width: 75,
+                      height: 75,
+                      fit: BoxFit.cover,
+                    ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        "Eugene G. Tobias!",
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 16,
-                          color: AppColors.textColor,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      const Text(
-                        "College of Computing Studies Information and Communication Technology",
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.black87,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: AppColors.primaryGreen.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Text(
-                          "22-1081",
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          "Eugene G. Tobias",
                           style: TextStyle(
-                            fontSize: 12,
-                            color: AppColors.primaryGreen,
                             fontWeight: FontWeight.w600,
+                            fontSize: 16,
+                            color: AppColors.textColor,
                           ),
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 4),
+                        const Text(
+                          "College of Computing Studies Information andCommuncationtechnolodya",
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textColor,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppColors.primaryGreen.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Text(
+                            "22-1081",
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppColors.primaryGreen,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-            SizedBox(height: 8),
-            Container(
-              width: double.infinity,
-              height: 2,
-              color: AppColors.textColor.withOpacity( 0.1),
+            const SizedBox(height: 12), // spacing
+            Divider(
+              color: AppColors.textColor.withOpacity(0.1), // soft gray line
+              thickness: 1,
+              height: 1,
             ),
 
-            SizedBox(height: 16),
-            Card(
-              color: AppColors.backgroundColor,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: ListTile(
-                leading: const Icon(Icons.book_rounded, color: AppColors.primaryGreen),
-                title: const Text("Course",
-                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: AppColors.primaryGreen)
-                  ),
-                subtitle: const Text("Bachelor's of Science in Information Technology",
-                    style: TextStyle(fontWeight: FontWeight.w500, fontSize: 12, fontStyle: FontStyle.italic, color: AppColors.textColor)
-                  ),
-              ),
-            ),
-            SizedBox(height: 12),
-            Card(
-              color: AppColors.backgroundColor,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: ListTile(
-                leading: const Icon(Icons.person_2_rounded, color: AppColors.primaryGreen),
-                title: const Text("Username",
-                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: AppColors.primaryGreen)
-                  ),
-                subtitle: const Text("Super Frince",
-                    style: TextStyle(fontWeight: FontWeight.w500, fontSize: 12, fontStyle: FontStyle.italic, color: AppColors.textColor)
-                  ),
-              ),
-            ),
-            SizedBox(height: 12),
-            Card(
-              color: AppColors.backgroundColor,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: ListTile(
-                leading: const Icon(Icons.call, color: AppColors.primaryGreen),
-                title: const Text("Contact Number",
-                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: AppColors.primaryGreen)
-                  ),
-                subtitle: const Text("0912345678",
-                    style: TextStyle(fontWeight: FontWeight.w500, fontSize: 12, fontStyle: FontStyle.italic, color: AppColors.textColor)
-                  ),
-              ),
-            ),
-            // Borrower's Card Section
-            const SizedBox(height: 16),
+            const SizedBox(height: 24),
+            // 📌 Info Section
+            _infoTile(Icons.book_rounded, "Course",
+                "Bachelor of Science in Information Technology"),
+            _infoTile(Icons.person_2_rounded, "Username", "Super Frince"),
+            _infoTile(Icons.call, "Contact Number", "0912345678"),
+
+            const SizedBox(height: 24),
+
+            // 📇 Borrower's Card Section
             const Text(
               "Borrower's Card",
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 16,
+                color: AppColors.primaryGreen,
               ),
             ),
-
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
 
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.grey[300], // background (like the gray in your design)
-                borderRadius: BorderRadius.circular(12),
+                gradient: LinearGradient(
+                  colors: [
+                    AppColors.primaryGreen.withOpacity(0.08),
+                    AppColors.primaryGreen.withOpacity(0.03),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: AppColors.primaryGreen.withOpacity(0.1),
+                ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Logo + ID Row
+                  // Logo + ID
                   Row(
                     children: [
                       Container(
                         width: 50,
                         height: 50,
                         decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.black, width: 1),
+                          color: AppColors.primaryGreen.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
                         ),
                         alignment: Alignment.center,
-                        child: const Text("Logo",
-                            style: TextStyle(fontSize: 12, color: Colors.black)),
+                        child: const Icon(Icons.library_books,
+                            color: AppColors.primaryGreen, size: 26),
                       ),
                       const SizedBox(width: 16),
                       const Expanded(
                         child: Text(
                           "ISUE-2210812024",
                           style: TextStyle(
-                            fontSize: 20,
+                            fontSize: 18,
                             fontWeight: FontWeight.bold,
+                            color: AppColors.textColor,
                           ),
                         ),
                       ),
@@ -181,14 +178,14 @@ class ProfilePage extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
 
-                  // Certification text (aligned right)
+                  // Certification
                   const Align(
                     alignment: Alignment.centerRight,
                     child: Text(
                       "Certified Student",
                       style: TextStyle(
                         fontStyle: FontStyle.italic,
-                        fontSize: 14,
+                        fontSize: 13,
                         color: Colors.black87,
                       ),
                     ),
@@ -196,8 +193,56 @@ class ProfilePage extends StatelessWidget {
                 ],
               ),
             ),
-
           ],
+        ),
+      ),
+    );
+  }
+
+  // 🔧 Reusable info tile
+  static Widget _infoTile(IconData icon, String title, String subtitle) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            AppColors.primaryGreen.withOpacity(0.08),
+            AppColors.primaryGreen.withOpacity(0.03),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: AppColors.primaryGreen.withOpacity(0.1),
+          width: 1,
+        ),
+      ),
+      child: ListTile(
+        leading: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: AppColors.primaryGreen.withOpacity(0.15),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(icon, color: AppColors.primaryGreen, size: 20),
+        ),
+        title: Text(
+          title,
+          style: const TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 14,
+            color: AppColors.primaryGreen,
+          ),
+        ),
+        subtitle: Text(
+          subtitle,
+          style: const TextStyle(
+            fontWeight: FontWeight.w500,
+            fontSize: 12,
+            fontStyle: FontStyle.italic,
+            color: AppColors.textColor,
+          ),
         ),
       ),
     );

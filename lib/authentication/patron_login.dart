@@ -4,7 +4,6 @@ import 'package:elibra_mobile/assets.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:flutter/gestures.dart';
 import 'package:elibra_mobile/authentication/patron_signup.dart'; 
-// import 'package:elibra_mobile/services/config_auth.dart'; // make sure this matches your file name
 
 class PatronLoginPage extends StatefulWidget {
   const PatronLoginPage({super.key});
@@ -14,10 +13,11 @@ class PatronLoginPage extends StatefulWidget {
 }
 
 class _PatronLoginPageState extends State<PatronLoginPage> {
+  bool _isLoading = false;
   bool _isPasswordVisible = false;
   late TapGestureRecognizer _signUpTap;
 
-  // ✅ Controllers for text fields
+  // CONTROLLERS
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
 
@@ -161,43 +161,58 @@ class _PatronLoginPageState extends State<PatronLoginPage> {
                         const SizedBox(height: 16),
 
                         // Login Button
-                        MouseRegion(
-                          cursor: SystemMouseCursors.click,
-                          child: ElevatedButton(
-                            onPressed: () async {
-                              final result = await ApiService.login(
-                                email: emailController.text.trim(),
-                                password: passwordController.text.trim(),
-                              );
+                       ElevatedButton(
+                        onPressed: _isLoading
+                            ? null
+                            : () async {
+                                setState(() {
+                                  _isLoading = true;
+                                });
 
-                              if (!result['error']) {
-                                Navigator.pushReplacementNamed(context, '/home');
-                              } else {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      result['message'] ?? 'Login failed',
-                                    ),
-                                  ),
+                                final result = await ApiService.login(
+                                  email: emailController.text.trim(),
+                                  password: passwordController.text.trim(),
                                 );
-                              }
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primaryGreen,
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                            child: Text(
-                              'Login',
-                              style: AppTextStyles.button.copyWith(
-                                fontSize: screenWidth < 600 ? 16 : 18,
-                                color: AppColors.backgroundColor,
-                              ),
-                            ),
+
+                                if (!result['error']) {
+                                  Navigator.pushReplacementNamed(context, '/home');
+                                } else {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(result['message'] ?? 'Login failed'),
+                                    ),
+                                  );
+                                }
+
+                                setState(() {
+                                  _isLoading = false;
+                                });
+                              },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primaryGreen,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
                           ),
                         ),
+                        child: _isLoading
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : Text(
+                                'Login',
+                                style: AppTextStyles.button.copyWith(
+                                  fontSize: screenWidth < 600 ? 16 : 18,
+                                  color: AppColors.backgroundColor,
+                                ),
+                              ),
+                      ),
+
                         const SizedBox(height: 16),
 
                         // Sign Up Link

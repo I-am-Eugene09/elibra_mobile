@@ -1,6 +1,7 @@
 import 'package:elibra_mobile/authentication/patron_login.dart';
 import 'package:elibra_mobile/authentication/otp.dart';
 import 'package:elibra_mobile/services/config_auth.dart';
+import 'package:elibra_mobile/services/fetch_data.dart';
 import 'package:flutter/material.dart';
 import 'package:elibra_mobile/assets.dart';
 import 'package:flutter_svg/svg.dart';
@@ -64,7 +65,7 @@ class _PatronSignUpPageState extends State<PatronSignUpPage> {
       _isCampusesLoading = true;
     });
 
-    final result = await ApiService.getCampuses();
+    final result = await FetchDataService.getCampuses();
 
     if (result['error'] == false) {
       setState(() {

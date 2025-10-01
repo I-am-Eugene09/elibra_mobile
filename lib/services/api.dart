@@ -1,8 +1,8 @@
 import 'package:flutter/foundation.dart';
 
 class Api {
-  // Centralized base URL for all API calls
-  static const String baseUrl = 'http://192.168.56.1:8000/api';
+  static const String baseUrl = 'http://192.168.1.148:8000/api';
+
 
   // Helper to build full endpoints
   static String path(String relativePath) => '$baseUrl$relativePath';

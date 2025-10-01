@@ -1,18 +1,70 @@
+//HOMEPAGE
 import 'package:elibra_mobile/assets.dart';
+import 'package:elibra_mobile/loading.dart';
+import 'package:elibra_mobile/profile/update_profile.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:elibra_mobile/profile/profile_page.dart';
 import 'package:elibra_mobile/authentication/patron_login.dart';
+import 'package:elibra_mobile/models/user_model.dart';
+import 'package:elibra_mobile/services/user_services.dart';
 
-class Homepage extends StatelessWidget {
+class Homepage extends StatefulWidget {
   const Homepage({super.key});
+
+  @override
+  State<Homepage> createState() => _HomepageState();
+}
+
+class _HomepageState extends State<Homepage> {
+  User? _user;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    try {
+      // Load from local first
+      final localUser = await UserService.getUser();
+      if (localUser != null) {
+        setState(() {
+          _user = localUser;
+          _isLoading = false;
+        });
+      }
+
+      // Then refresh from API
+      final result = await UserService.fetchUserProfile();
+      if (result != null && result['id'] != null) {
+        final user = User.fromJson(result);
+        await UserService.saveUser(user);
+        setState(() {
+          _user = user;
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      print('Error loading user data: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.backgroundColor,
 
-      // ✅ Drawer (Sidebar)
+      // ✅ Drawer
       drawer: Drawer(
         child: ListView(
           padding: EdgeInsets.zero,
@@ -66,7 +118,7 @@ class Homepage extends StatelessWidget {
                           "Enhanced Integrated Library & Resource\nAutomation System",
                           style: TextStyle(
                             fontSize: 12,
-                            color: Colors.black54,
+                            color: Color.fromRGBO(0, 0, 0, 0.541),
                             height: 1.3,
                           ),
                         ),
@@ -89,16 +141,16 @@ class Homepage extends StatelessWidget {
               },
             ),
 
-              ListTile(
-                leading: const Icon(Icons.credit_card, color: AppColors.primaryGreen),
-                title: const Text("My e-Borrower Card"),
-                trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.black54),
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('e-Borrower Card feature coming soon!')),
-                  );
-                },
-              ),
+            ListTile(
+              leading: const Icon(Icons.credit_card, color: AppColors.primaryGreen),
+              title: const Text("My e-Borrower Card"),
+              trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.black54),
+              onTap: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('e-Borrower Card feature coming soon!')),
+                );
+              },
+            ),
 
             const Divider(),
 
@@ -110,14 +162,14 @@ class Homepage extends StatelessWidget {
                 Navigator.pushNamed(context, '/opac');
               },
             ),
-              ListTile(
-                leading: const Icon(Icons.book, color: AppColors.primaryGreen),
-                title: const Text("E-Resources"),
-                trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.black54),
-                onTap: () {
-                  Navigator.pushNamed(context, '/eresources');
-                },
-              ),
+            ListTile(
+              leading: const Icon(Icons.book, color: AppColors.primaryGreen),
+              title: const Text("E-Resources"),
+              trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.black54),
+              onTap: () {
+                Navigator.pushNamed(context, '/eresources');
+              },
+            ),
             ListTile(
               leading: const Icon(Icons.language, color: AppColors.primaryGreen),
               title: const Text("E-Libra Web"),
@@ -172,16 +224,34 @@ class Homepage extends StatelessWidget {
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(8),
                                 ),
+                                padding: const EdgeInsets.symmetric(vertical: 16),
                               ),
-                              onPressed: () {
-                                Navigator.of(context).pop(); 
-                                Navigator.pushAndRemoveUntil(
-                                  context,
-                                  MaterialPageRoute(builder: (context) => const PatronLoginPage()),
-                                  (route) => false,
-                                );
+                              onPressed: () async {
+                                Navigator.of(context).pop(); // close bottom sheet first
+
+                                await UserService.logout();
+
+                                if (context.mounted) {
+
+                                 Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Logout Successfully!'),
+                                      backgroundColor: Colors.green,
+                                    ),  
+                                  );
+                                }
                               },
-                              child: const Text("Confirm"),
+
+                              child: const Text(
+                                "Confirm",
+                                style: TextStyle(
+                                  color: AppColors.backgroundColor,
+                                  fontWeight: FontWeight.w500,
+                                  fontSize: 18,
+                                ),
+                              ),
                             ),
                           ),
                           const SizedBox(height: 8),
@@ -192,11 +262,19 @@ class Homepage extends StatelessWidget {
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(8),
                                 ),
+                                padding: const EdgeInsets.symmetric(vertical: 16),
                               ),
                               onPressed: () {
                                 Navigator.of(context).pop();
                               },
-                              child: const Text("Cancel"),
+                              child: const Text(
+                                "Cancel",
+                                style: TextStyle(
+                                  color: AppColors.primaryGreen,
+                                  fontWeight: FontWeight.w500,
+                                  fontSize: 18,
+                                ),
+                              ),
                             ),
                           ),
                         ],
@@ -250,30 +328,80 @@ class Homepage extends StatelessWidget {
                   children: [
                     ClipRRect(
                       borderRadius: BorderRadius.circular(12),
-                      child: Image.asset(
-                        "assets/images/Anya.jpg",
-                        width: 70,
-                        height: 70,
-                        fit: BoxFit.cover,
-                      ),
+                      child: _user?.profilePicture != null
+                          ? Image.network(
+                              // _user!.profilePicture!,
+                              _user?.profilePicture?.url ?? "assets/images/Anya.jpg",
+                              width: 70,
+                              height: 70,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Container(
+                                  width: 70,
+                                  height: 70,
+                                  color: AppColors.primaryGreen.withOpacity(0.1),
+                                  child: const Icon(
+                                    Icons.person,
+                                    size: 35,
+                                    color: AppColors.primaryGreen,
+                                  ),
+                                );
+                              },
+                            )
+                          : Image.asset(
+                              "assets/images/Anya.jpg",
+                              width: 70,
+                              height: 70,
+                              fit: BoxFit.cover,
+                            ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
-                        children: const [
+                        children: [
+                          // Greeting + Name
                           Text(
-                            "Hello 👋, Eugene G. Tobias!",
-                            style: TextStyle(
+                            _isLoading
+                                ? "Loading..."
+                                : _user != null
+                                    ? "${_user!.greeting}, ${_user!.name}!"
+                                    : "Hello 👋, Guest!",
+                            style: const TextStyle(
                               fontWeight: FontWeight.w600,
                               fontSize: 14,
                               color: AppColors.textColor,
                             ),
                           ),
-                          SizedBox(height: 4),
-                          Text(
-                            "22-1081 · BSIT 3-1\nIsabela State University - Main Campus",
+                          const SizedBox(height: 4),
+
+                          // Static Borrower's Card ID
+                          const Text(
+                            "Borrower's Card ID: 2025-00001",
                             style: TextStyle(fontSize: 12, color: Colors.black54),
+                          ),
+                          const SizedBox(height: 4),
+
+                          // Sex (Fetched from API)
+                          Text(
+                            _isLoading
+                                ? "Loading..."
+                                : _user != null
+                                    ? "Sex: ${_user!.sex == "1" ? "Male" : "Female"}"
+                                    : "Sex: Unknown",
+                            style: const TextStyle(fontSize: 12, color: Colors.black54),
+                          ),
+                          const SizedBox(height: 4),
+
+                          // Campus (Fetched)
+                          Text(
+                            _isLoading
+                                ? "Loading..."
+                                : _user != null
+                                    // ? _user!.campus ?? "Unknown Campus!"
+                                    ? _user?.campus?.campus ?? "Unknown Campus!"
+                                    : "Please log in",
+                            style: const TextStyle(fontSize: 12, color: Colors.black54),
                           ),
                         ],
                       ),

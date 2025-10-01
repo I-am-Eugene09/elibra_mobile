@@ -1,7 +1,8 @@
 import 'package:elibra_mobile/authentication/patron_login.dart';
 import 'package:elibra_mobile/authentication/otp.dart';
-import 'package:elibra_mobile/services/config_auth.dart';
 import 'package:elibra_mobile/services/fetch_data.dart';
+import 'package:elibra_mobile/services/config_auth.dart';
+import 'package:elibra_mobile/services/user_services.dart';
 import 'package:flutter/material.dart';
 import 'package:elibra_mobile/assets.dart';
 import 'package:flutter_svg/svg.dart';
@@ -15,23 +16,14 @@ class PatronSignUpPage extends StatefulWidget {
 }
 
 class _PatronSignUpPageState extends State<PatronSignUpPage> {
-  // Step control
   int _step = 0;
-
-  // Password toggle
   bool _isPasswordVisible = false;
-
-  // Dropdown selections
   String? _selectedSex;
-  String? _selectedRole;
   String? _selectedCampus;
   List<Map<String, dynamic>> _campuses = [];
-
-  // Separate loading flags
   bool _isCampusesLoading = false;
   bool _isRegisterLoading = false;
 
-  // Controllers
   final TextEditingController _firstNameController = TextEditingController();
   final TextEditingController _lastNameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
@@ -59,11 +51,8 @@ class _PatronSignUpPageState extends State<PatronSignUpPage> {
     super.dispose();
   }
 
-  // Load campuses
   Future<void> _loadCampuses() async {
-    setState(() {
-      _isCampusesLoading = true;
-    });
+    setState(() => _isCampusesLoading = true);
 
     final result = await FetchDataService.getCampuses();
 
@@ -73,19 +62,15 @@ class _PatronSignUpPageState extends State<PatronSignUpPage> {
         if (_campuses.isNotEmpty) {
           _selectedCampus = _campuses.first['id'].toString();
         }
-        _isCampusesLoading = false;
       });
     } else {
-      setState(() {
-        _isCampusesLoading = false;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(result['message'])),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(result['message'])));
     }
+
+    setState(() => _isCampusesLoading = false);
   }
 
-  // Register user
   Future<void> _registerUser() async {
     if (_firstNameController.text.isEmpty ||
         _lastNameController.text.isEmpty ||
@@ -93,7 +78,6 @@ class _PatronSignUpPageState extends State<PatronSignUpPage> {
         _passwordController.text.isEmpty ||
         _confirmPasswordController.text.isEmpty ||
         _selectedSex == null ||
-        _selectedRole == null ||
         _selectedCampus == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please fill in all required fields')),
@@ -108,63 +92,69 @@ class _PatronSignUpPageState extends State<PatronSignUpPage> {
       return;
     }
 
-    setState(() {
-      _isRegisterLoading = true;
-    });
+    setState(() => _isRegisterLoading = true);
 
-    int sexValue = _selectedSex == 'Male' ? 1 : 0;
-    int roleValue = _selectedRole == 'Admin' ? 0 : 2;
-    final fullName =
-        '${_firstNameController.text.trim()} ${_lastNameController.text.trim()}'
-            .trim();
+    try {
+      String sexValue = _selectedSex == 'Male' ? '1' : '0';
+      final fullName =
+          '${_firstNameController.text.trim()} ${_lastNameController.text.trim()}'
+              .trim();
 
-    final result = await ApiService.registerUser(
-      name: fullName,
-      sex: sexValue,
-      campusId: int.parse(_selectedCampus!),
-      role: roleValue,
-      email: _emailController.text,
-      password: _passwordController.text,
-      passwordConfirmation: _confirmPasswordController.text,
-    );
-
-    setState(() {
-      _isRegisterLoading = false;
-    });
-
-    if (result['error'] == false) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Registration successful!')),
+      final result = await ApiService.registerUser(
+        name: fullName,
+        sex: sexValue,
+        campusId: int.parse(_selectedCampus!),
+        email: _emailController.text.trim(),
+        role: '2',
+        password: _passwordController.text,
+        passwordConfirmation: _confirmPasswordController.text,
       );
 
-      final data = result['data'] ?? {};
-      final String? token =
-          (data['token'] ?? data['access_token']) as String?;
+      if (result['error'] == false) {
+        final data = result['data'] ?? {};
+        final String? token =
+            (data['token'] ?? data['access_token']) as String?;
 
-      if (token == null || token.isEmpty) {
+        if (token == null || token.isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Missing auth token from server.')),
+          );
+        } else {
+          await UserService.saveToken(token);
+          if (!mounted) return;
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => OTPVerificationScreen(
+                email: _emailController.text.trim(),
+                token: token,
+              ),
+            ),
+          );
+        }
+      } else {
+        String message = result['message'] ?? 'Registration failed';
+        if (result['errors'] != null && result['errors'] is Map) {
+          final errors = result['errors'] as Map;
+          if (errors.isNotEmpty) {
+            message = errors.values
+                .map((e) => e is List ? e.join(", ") : e.toString())
+                .join("\n");
+          }
+        }
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Missing auth token from server.')),
+          SnackBar(content: Text(message)),
         );
-        return;
       }
-
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => OTPVerificationScreen(
-            email: _emailController.text,
-            token: token,
-          ),
-        ),
-      );
-    } else {
+    } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(result['message'])),
+        SnackBar(content: Text('Error: $e')),
       );
+    } finally {
+      if (mounted) setState(() => _isRegisterLoading = false);
     }
   }
 
-  // Terms dialog
   void _showTermsDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -175,24 +165,19 @@ class _PatronSignUpPageState extends State<PatronSignUpPage> {
         ),
         content: const SingleChildScrollView(
           child: Text(
-            "Here you can write your Terms and Conditions...\n\n"
-            "1. Rule one\n"
-            "2. Rule two\n"
-            "3. Etc.",
+            "Here you can write your Terms and Conditions...\n\n1. Rule one\n2. Rule two\n3. Etc.",
             style: TextStyle(fontSize: 14),
           ),
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Close"),
-          ),
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Close")),
         ],
       ),
     );
   }
 
-  // STEP 1 UI
   Widget _buildStepOne() {
     return Container(
       padding: const EdgeInsets.all(20),
@@ -203,79 +188,87 @@ class _PatronSignUpPageState extends State<PatronSignUpPage> {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        mainAxisSize: MainAxisSize.min,
         children: [
-          // First Name
           TextField(
             controller: _firstNameController,
             decoration: const InputDecoration(labelText: 'First Name'),
           ),
           const SizedBox(height: 16),
-
-          // Last Name
           TextField(
             controller: _lastNameController,
             decoration: const InputDecoration(labelText: 'Last Name'),
           ),
           const SizedBox(height: 16),
 
-          // Sex + Role
-          Row(
+          // Sex selection
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: DropdownButtonFormField<String>(
-                  value: _selectedSex,
-                  decoration: const InputDecoration(labelText: 'Sex'),
-                  items: ['Male', 'Female'].map((String sex) {
-                    return DropdownMenuItem<String>(
-                      value: sex,
-                      child: Text(sex),
-                    );
-                  }).toList(),
-                  onChanged: (val) => setState(() => _selectedSex = val),
-                ),
+              const Text(
+                'Sex',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: DropdownButtonFormField<String>(
-                  value: _selectedRole,
-                  decoration: const InputDecoration(labelText: 'Role'),
-                  items: ['Admin', 'Student'].map((String role) {
-                    return DropdownMenuItem<String>(
-                      value: role,
-                      child: Text(role),
-                    );
-                  }).toList(),
-                  onChanged: (val) => setState(() => _selectedRole = val),
-                ),
+              const SizedBox(height: 8),
+              Row(
+                children: ['Male', 'Female'].map((sex) {
+                  final isSelected = _selectedSex == sex;
+                  return Expanded(
+                    child: GestureDetector(
+                      onTap: () => setState(() => _selectedSex = sex),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        margin: const EdgeInsets.symmetric(horizontal: 4),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? AppColors.primaryGreen
+                              : Colors.transparent,
+                          border: Border.all(color: AppColors.primaryGreen),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          sex,
+                          style: TextStyle(
+                            color: isSelected
+                                ? Colors.white
+                                : AppColors.primaryGreen,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
               ),
             ],
           ),
           const SizedBox(height: 16),
 
+          // Campus dropdown
           _isCampusesLoading
               ? const Center(child: CircularProgressIndicator())
-              : DropdownButtonFormField<String>(
-                  value: _selectedCampus,
-                  decoration: const InputDecoration(labelText: 'Campus'),
-                  items: _campuses.map<DropdownMenuItem<String>>((campus) {
-                    return DropdownMenuItem<String>(
-                      value: campus['id'].toString(),
-                      child: Text(campus['campus'] ?? ''),
-                    );
-                  }).toList(),
-                  onChanged: (val) => setState(() => _selectedCampus = val),
+              : DropdownButtonHideUnderline(
+                  child: DropdownButtonFormField<String>(
+                    value: _selectedCampus,
+                    decoration: const InputDecoration(labelText: 'Campus'),
+                    items: _campuses
+                        .map<DropdownMenuItem<String>>((campus) {
+                      return DropdownMenuItem<String>(
+                        value: campus['id'].toString(),
+                        child: Text(campus['campus'] ?? ''),
+                      );
+                    }).toList(),
+                    onChanged: (val) =>
+                        setState(() => _selectedCampus = val),
+                  ),
                 ),
-
           const SizedBox(height: 20),
 
-          // Continue Button
           ElevatedButton(
             onPressed: () {
               if (_firstNameController.text.isEmpty ||
                   _lastNameController.text.isEmpty ||
                   _selectedSex == null ||
-                  _selectedRole == null ||
                   _selectedCampus == null) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Please fill in all fields')),
@@ -287,8 +280,7 @@ class _PatronSignUpPageState extends State<PatronSignUpPage> {
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primaryGreen,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
+                  borderRadius: BorderRadius.circular(8)),
               padding: const EdgeInsets.symmetric(vertical: 12),
             ),
             child: const Text(
@@ -305,7 +297,6 @@ class _PatronSignUpPageState extends State<PatronSignUpPage> {
     );
   }
 
-  // STEP 2 UI
   Widget _buildStepTwo() {
     return Container(
       padding: const EdgeInsets.all(20),
@@ -316,16 +307,11 @@ class _PatronSignUpPageState extends State<PatronSignUpPage> {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        mainAxisSize: MainAxisSize.min,
         children: [
-          // Email
           TextField(
-            controller: _emailController,
-            decoration: const InputDecoration(labelText: 'Email'),
-          ),
+              controller: _emailController,
+              decoration: const InputDecoration(labelText: 'Email')),
           const SizedBox(height: 16),
-
-          // Password
           TextField(
             controller: _passwordController,
             obscureText: !_isPasswordVisible,
@@ -338,14 +324,12 @@ class _PatronSignUpPageState extends State<PatronSignUpPage> {
                       : Icons.visibility_off,
                   color: AppColors.textColor,
                 ),
-                onPressed: () => setState(
-                    () => _isPasswordVisible = !_isPasswordVisible),
+                onPressed: () =>
+                    setState(() => _isPasswordVisible = !_isPasswordVisible),
               ),
             ),
           ),
           const SizedBox(height: 16),
-
-          // Confirm Password
           TextField(
             controller: _confirmPasswordController,
             obscureText: !_isPasswordVisible,
@@ -358,20 +342,18 @@ class _PatronSignUpPageState extends State<PatronSignUpPage> {
                       : Icons.visibility_off,
                   color: AppColors.textColor,
                 ),
-                onPressed: () => setState(
-                    () => _isPasswordVisible = !_isPasswordVisible),
+                onPressed: () =>
+                    setState(() => _isPasswordVisible = !_isPasswordVisible),
               ),
             ),
           ),
           const SizedBox(height: 16),
-
           ElevatedButton(
             onPressed: _isRegisterLoading ? null : _registerUser,
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primaryGreen,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
+                  borderRadius: BorderRadius.circular(8)),
               padding: const EdgeInsets.symmetric(vertical: 14),
             ),
             child: _isRegisterLoading
@@ -379,9 +361,7 @@ class _PatronSignUpPageState extends State<PatronSignUpPage> {
                     height: 22,
                     width: 22,
                     child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
+                        strokeWidth: 2, color: Colors.white),
                   )
                 : const Text(
                     'Sign Up',
@@ -401,8 +381,6 @@ class _PatronSignUpPageState extends State<PatronSignUpPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.backgroundColor,
-
-      // 👇 Show AppBar only on step 2
       appBar: _step == 1
           ? AppBar(
               backgroundColor: AppColors.backgroundColor,
@@ -410,15 +388,10 @@ class _PatronSignUpPageState extends State<PatronSignUpPage> {
               leading: IconButton(
                 icon: const Icon(Icons.chevron_left,
                     color: AppColors.primaryGreen),
-                onPressed: () {
-                  setState(() {
-                    _step = 0;
-                  });
-                },
+                onPressed: () => setState(() => _step = 0),
               ),
             )
           : null,
-
       body: SafeArea(
         top: false,
         child: Center(
@@ -427,7 +400,6 @@ class _PatronSignUpPageState extends State<PatronSignUpPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Logo + App Title
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -436,83 +408,57 @@ class _PatronSignUpPageState extends State<PatronSignUpPage> {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: const [
-                        Text(
-                          'E-Libra',
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.primaryGreen,
-                          ),
-                        ),
+                        Text('E-Libra',
+                            style: TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.primaryGreen)),
                         SizedBox(height: 4),
                         Text(
                           'Enhanced Integrated Library & Resource \nAutomation System',
                           style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textColor,
-                          ),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textColor),
                         ),
                       ],
                     ),
                   ],
                 ),
                 const SizedBox(height: 20),
-
-                // Title
-                const Text(
-                  'Create an Account',
-                  style: TextStyle(
-                    fontSize: 26,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.primaryGreen,
-                  ),
-                ),
+                const Text('Create an Account',
+                    style: TextStyle(
+                        fontSize: 26,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primaryGreen)),
                 const SizedBox(height: 14),
-
-                // Form container
                 IndexedStack(
-                  index: _step,
-                  children: [
-                    _buildStepOne(),
-                    _buildStepTwo(),
-                  ],
-                ),
-
+                    index: _step,
+                    children: [_buildStepOne(), _buildStepTwo()]),
                 const SizedBox(height: 20),
-
-                // 👇 Only show "Already have an account?" on step 0
                 if (_step == 0)
                   Center(
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Text(
-                          'Already have an account? ',
-                          style: TextStyle(
-                            color: AppColors.textColor,
-                            fontWeight: FontWeight.w500,
-                            fontSize: 12,
-                          ),
-                        ),
+                        const Text('Already have an account? ',
+                            style: TextStyle(
+                                color: AppColors.textColor,
+                                fontWeight: FontWeight.w500,
+                                fontSize: 12)),
                         GestureDetector(
                           onTap: () {
                             Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) =>
-                                    const PatronLoginPage(),
-                              ),
-                            );
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) =>
+                                        const PatronLoginPage()));
                           },
-                          child: const Text(
-                            'Login',
-                            style: TextStyle(
-                              color: AppColors.primaryGreen,
-                              fontWeight: FontWeight.bold,
-                              decoration: TextDecoration.underline,
-                            ),
-                          ),
+                          child: const Text('Login',
+                              style: TextStyle(
+                                  color: AppColors.primaryGreen,
+                                  fontWeight: FontWeight.bold,
+                                  decoration: TextDecoration.underline)),
                         ),
                       ],
                     ),

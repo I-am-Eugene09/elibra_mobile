@@ -1,9 +1,13 @@
 import 'package:elibra_mobile/services/config_auth.dart';
+import 'package:elibra_mobile/services/user_services.dart';
 import 'package:flutter/material.dart';
 import 'package:elibra_mobile/assets.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:flutter/gestures.dart';
 import 'package:elibra_mobile/authentication/patron_signup.dart'; 
+import 'package:elibra_mobile/loading.dart';
+import 'package:elibra_mobile/no_internet.dart';
+import 'package:elibra_mobile/validations.dart';
 
 class PatronLoginPage extends StatefulWidget {
   const PatronLoginPage({super.key});
@@ -13,13 +17,15 @@ class PatronLoginPage extends StatefulWidget {
 }
 
 class _PatronLoginPageState extends State<PatronLoginPage> {
-  bool _isLoading = false;
-  bool _isPasswordVisible = false;
   late TapGestureRecognizer _signUpTap;
 
-  // CONTROLLERS
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
+  bool _isPasswordVisible = false;
+
+  // Track empty fields
+  bool _emailEmpty = false;
+  bool _passwordEmpty = false;
 
   @override
   void initState() {
@@ -41,6 +47,58 @@ class _PatronLoginPageState extends State<PatronLoginPage> {
     super.dispose();
   }
 
+  Future<void> _handleLogin() async {
+    setState(() {
+      _emailEmpty = emailController.text.trim().isEmpty;
+      _passwordEmpty = passwordController.text.trim().isEmpty;
+    });
+
+    if (_emailEmpty || _passwordEmpty) {
+      ValidationDialogs.emptyField(context);
+      return;
+    }
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const CustomLoadingModal(message: "Logging in..."),
+    );
+
+    final result = await ApiService.login(
+      email: emailController.text.trim(),
+      password: passwordController.text.trim(),
+    );
+
+    Navigator.of(context).pop();
+
+    if (result['noInternet'] == true) { 
+      showDialog(
+        context: context,
+        builder: (_) => const NoInternetModal(),
+      );
+      return;
+    }
+
+    if (!result['error']) {
+      final token = result['token'];
+      if (token != null) await UserService.saveToken(token);
+      Navigator.pushReplacementNamed(context, '/home');
+    } else {
+      String msg = result['message'];
+      // String err = result['status'];
+
+    if (msg.contains("Invalid Credentials.")) {
+      ValidationDialogs.invalidCredentials(context);
+      return;
+    }
+
+    if(msg.contains("Forbidden")){
+      ValidationDialogs.pendingApproval(context);
+    }
+
+    ValidationDialogs.genericError(context);
+  }
+}
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
@@ -118,10 +176,21 @@ class _PatronLoginPageState extends State<PatronLoginPage> {
                         // Email
                         TextField(
                           controller: emailController,
-                          decoration: const InputDecoration(
+                          decoration: InputDecoration(
                             labelText: 'Email',
+                            labelStyle: TextStyle(color: _emailEmpty ? AppColors.primaryRed : AppColors.textColor),
+                            enabledBorder: UnderlineInputBorder(
+                              borderSide: BorderSide(color: _emailEmpty ? AppColors.primaryRed : AppColors.textColor),
+                            ),
+                            focusedBorder: UnderlineInputBorder(
+                              borderSide: BorderSide(color: _emailEmpty ? AppColors.primaryRed : AppColors.primaryGreen, width: 2),
+                            ),
                           ),
+                          onChanged: (_) {
+                            if (_emailEmpty) setState(() => _emailEmpty = false);
+                          },
                         ),
+
                         const SizedBox(height: 16),
 
                         // Password
@@ -130,11 +199,16 @@ class _PatronLoginPageState extends State<PatronLoginPage> {
                           obscureText: !_isPasswordVisible,
                           decoration: InputDecoration(
                             labelText: 'Password',
+                            labelStyle: TextStyle(color: _passwordEmpty ? AppColors.primaryRed : AppColors.textColor),
+                            enabledBorder: UnderlineInputBorder(
+                              borderSide: BorderSide(color: _passwordEmpty ? AppColors.primaryRed : AppColors.textColor),
+                            ),
+                            focusedBorder: UnderlineInputBorder(
+                              borderSide: BorderSide(color: _passwordEmpty ? AppColors.primaryRed : AppColors.primaryGreen, width: 2),
+                            ),
                             suffixIcon: IconButton(
                               icon: Icon(
-                                _isPasswordVisible
-                                    ? Icons.visibility
-                                    : Icons.visibility_off,
+                                _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
                                 color: AppColors.textColor,
                               ),
                               onPressed: () {
@@ -144,7 +218,11 @@ class _PatronLoginPageState extends State<PatronLoginPage> {
                               },
                             ),
                           ),
+                          onChanged: (_) {
+                            if (_passwordEmpty) setState(() => _passwordEmpty = false);
+                          },
                         ),
+
                         const SizedBox(height: 12),
 
                         // Forgot Password
@@ -161,58 +239,23 @@ class _PatronLoginPageState extends State<PatronLoginPage> {
                         const SizedBox(height: 16),
 
                         // Login Button
-                       ElevatedButton(
-                        onPressed: _isLoading
-                            ? null
-                            : () async {
-                                setState(() {
-                                  _isLoading = true;
-                                });
-
-                                final result = await ApiService.login(
-                                  email: emailController.text.trim(),
-                                  password: passwordController.text.trim(),
-                                );
-
-                                if (!result['error']) {
-                                  Navigator.pushReplacementNamed(context, '/home');
-                                } else {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(result['message'] ?? 'Login failed'),
-                                    ),
-                                  );
-                                }
-
-                                setState(() {
-                                  _isLoading = false;
-                                });
-                              },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primaryGreen,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
+                        ElevatedButton(
+                          onPressed: _handleLogin,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primaryGreen,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          child: Text(
+                            'Login',
+                            style: AppTextStyles.button.copyWith(
+                              fontSize: screenWidth < 600 ? 16 : 18,
+                              color: AppColors.backgroundColor,
+                            ),
                           ),
                         ),
-                        child: _isLoading
-                            ? const SizedBox(
-                                height: 20,
-                                width: 20,
-                                child: CircularProgressIndicator(
-                                  color: Colors.white,
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : Text(
-                                'Login',
-                                style: AppTextStyles.button.copyWith(
-                                  fontSize: screenWidth < 600 ? 16 : 18,
-                                  color: AppColors.backgroundColor,
-                                ),
-                              ),
-                      ),
-
                         const SizedBox(height: 16),
 
                         // Sign Up Link

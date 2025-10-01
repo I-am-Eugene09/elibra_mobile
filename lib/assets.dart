@@ -5,6 +5,7 @@ class AppColors{
   static const primaryGreen = Color(0xFF04B954);
   static const backgroundColor = Color(0xFFF7F7FF);
   static const textColor = Color(0xFF22223b);
+  static const primaryRed = Color(0xFFe63946);
 }
 
 //For App Images

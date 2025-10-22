@@ -1,6 +1,8 @@
 import 'package:elibra_mobile/loading.dart';
+import 'package:elibra_mobile/services/api.dart';
 import 'package:elibra_mobile/services/user_services.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../assets.dart';
 import 'update_profile.dart';
 
@@ -25,6 +27,44 @@ class _ProfilePageState extends State<ProfilePage> {
       _profileFuture = UserService.fetchUserProfile();
     });
   }
+
+
+  String translateDate(String? dateString){
+    if(dateString == null || dateString.isEmpty) return 'Not Verified!';
+    try{
+      final date = DateTime.parse(dateString);
+
+      final formattedDate = DateFormat('MMMM dd, yyyy').format(date);
+
+      return formattedDate;
+    }catch(e){
+      return 'inavlid date format';
+    }
+  }
+
+String patronType (dynamic type) {
+  switch (type) {
+    case 1:
+      return "Student";
+    case 2:
+      return "Faculty";
+    case 3:
+      return "Guest"; 
+    default:
+      return "Unknown";
+  }
+}
+String roleType (dynamic type){
+  switch (type) {
+    case "1":  
+      return "Librarian";
+    case "2":  
+      return "Patron";
+    default:
+      return "Unknown";
+  }
+}
+
   
   @override
   Widget build(BuildContext context) {
@@ -88,10 +128,9 @@ class _ProfilePageState extends State<ProfilePage> {
                       children: [
                         ClipRRect(
                           borderRadius: BorderRadius.circular(12),
-                          child: (user['profile_picture'] != null &&
-                                  user['profile_picture']['url'] != null)
+                          child: user['profile_photo'] != null
                               ? Image.network(
-                                  user['profile_picture']['url'],
+                                  user['profile_photo']['path'],
                                   width: 70,
                                   height: 70,
                                   fit: BoxFit.cover,
@@ -101,6 +140,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                 )
                               : _profilePlaceholder(),
                         ),
+
                         const SizedBox(width: 14),
                         Expanded(
                           child: Column(
@@ -116,7 +156,7 @@ class _ProfilePageState extends State<ProfilePage> {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                user['campus']?['campus'] ?? "No campus data",
+                                user['campus']?['name'] ?? "No campus data",
                                 style: const TextStyle(
                                   fontSize: 12,
                                   color: AppColors.textColor,
@@ -127,10 +167,10 @@ class _ProfilePageState extends State<ProfilePage> {
                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                 decoration: BoxDecoration(
                                   color: AppColors.primaryGreen.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(12),
+                                  borderRadius: BorderRadius.circular(4),
                                 ),
-                                child: Text(
-                                  user['id'].toString(),
+                                child: Text( "ID Number: " +
+                                  user['id_number'] ?? "No ID Number",
                                   style: const TextStyle(
                                     fontSize: 12,
                                     color: AppColors.primaryGreen,
@@ -152,85 +192,54 @@ class _ProfilePageState extends State<ProfilePage> {
                   ),
                   const SizedBox(height: 24),
 
-                  // 📌 Info
-                  _infoTile(Icons.person, "Sex", (user['sex'] == "1") ? "Male" : "Female"),
-                  _infoTile(Icons.call, "Contact Number", user['contact_number'] ?? "N/A"),
-                  _infoTile(Icons.email, "Email", user['email'] ?? "N/A"),
-
-                  const SizedBox(height: 24),
-
-                  // 📇 Borrower's Card Section
                   const Text(
-                    "Borrower's Card",
+                    "Personal Information",
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
-                      color: AppColors.primaryGreen,
+                      color: AppColors.textColor, 
                     ),
                   ),
                   const SizedBox(height: 12),
-
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          AppColors.primaryGreen.withOpacity(0.08),
-                          AppColors.primaryGreen.withOpacity(0.03),
-                        ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: AppColors.primaryGreen.withOpacity(0.1),
-                      ),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              width: 50,
-                              height: 50,
-                              decoration: BoxDecoration(
-                                color: AppColors.primaryGreen.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              alignment: Alignment.center,
-                              child: const Icon(Icons.library_books,
-                                  color: AppColors.primaryGreen, size: 26),
-                            ),
-                            const SizedBox(width: 16),
-                            const Expanded(
-                              child: Text(
-                                "ISUE-2210812024",
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.textColor,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        const Align(
-                          alignment: Alignment.centerRight,
-                          child: Text(
-                            "Certified Student",
-                            style: TextStyle(
-                              fontStyle: FontStyle.italic,
-                              fontSize: 13,
-                              color: Colors.black87,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                  // 📌 Info
+                  // _infoTile(Icons.gender, "Sex", (user['sex'] == "male") ? "Male" : "Female"),
+                  _infoTile(
+                    (user['sex'] == "male") ? Icons.male : Icons.female,
+                    "Sex",
+                    (user['sex'] == "male") ? "Male" : "Female",
                   ),
+                  _infoTile(Icons.call, "Contact Number", user['contact_number'] ?? "Not Specified"),
+                  _infoTile(Icons.email, "Email", user['email'] ?? "N/A"),
+                  // _infoTile(Icons.location_city, "Address", user['address'] ?? "Not Specified!"),
+
+
+                const SizedBox(height: 24),
+
+                Text(
+                  "Account Information",
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: AppColors.textColor,
+                  ),
+                ),
+
+                const SizedBox(height: 12),
+
+                  _infoTile(
+                    Icons.account_box,
+                    "Account Type",
+                    (user["role"] != null && user["patron_type"] != null)
+                        ? "${roleType(user["role"])} - ${patronType(user["patron_type"])}"
+                        : "Not Specified!",
+                  ),
+
+                  _infoTile(Icons.calendar_month, "Date Verified", translateDate(user["email_verified_at"])),
+                  _infoTile(Icons.calendar_view_day, "Date Created", translateDate(user["date_joined"])),
+
+
+                  const SizedBox(height: 24),
+
                 ],
               ),
             ),

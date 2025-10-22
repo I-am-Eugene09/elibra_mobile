@@ -1,70 +1,68 @@
-    //USER SERVICE
-    import 'dart:convert';
-    import 'package:flutter/material.dart';
+//USER SERVICE
+import 'dart:convert';
+import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-    import 'package:http/http.dart' as http;
-    import 'dart:io';
-    import '../models/user_model.dart';
-    import 'api.dart';
+import 'package:http/http.dart' as http;
+import 'dart:io';
+import '../models/user_model.dart';
+import 'api.dart';
 
-    class UserService {
-      static const String _userKey = 'user_data';
-      static const String _tokenKey = 'auth_token';
+class UserService {
+  static const String _userKey = 'user_data';
+  static const String _tokenKey = 'auth_token';
 
-      // Save user data to local storage
-      static Future<void> saveUser(User user) async {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString(_userKey, jsonEncode(user.toJson()));
-      }
+  // Save user data to local storage
+  static Future<void> saveUser(User user) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_userKey, jsonEncode(user.toJson()));
+  }
 
-      // Get user data from local storage
-      static Future<User?> getUser() async {
-        final prefs = await SharedPreferences.getInstance();
-        final userString = prefs.getString(_userKey);
-        
-        if (userString != null) {
-          try {
-            final userJson = jsonDecode(userString);
-            return User.fromJson(userJson);
-          } catch (e) {
-            print('Error parsing user data: $e');
-            return null;
-          }
-        }
+  // Get user data from local storage
+  static Future<User?> getUser() async {
+    final prefs = await SharedPreferences.getInstance();
+    final userString = prefs.getString(_userKey);
+    
+    if (userString != null) {
+      try {
+        final userJson = jsonDecode(userString);
+        return User.fromJson(userJson);
+      } catch (e) {
+        print('Error parsing user data: $e');
         return null;
       }
+    }
+    return null;
+  }
 
-      // Save auth token
-      static Future<void> saveToken(String token) async {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString(_tokenKey, token);
-      }
+  // Save auth token
+  static Future<void> saveToken(String token) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_tokenKey, token);
+  }
 
-      // Get auth token
-      static Future<String?> getToken() async {
-        final prefs = await SharedPreferences.getInstance();
-        return prefs.getString(_tokenKey);
-      }
+  // Get auth token
+  static Future<String?> getToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_tokenKey);
+  }
 
-      // Clear all user data
-      static Future<void> clearUserData() async {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.remove(_userKey);
-        await prefs.remove(_tokenKey);
-      }
+  // Clear all user data
+  static Future<void> clearUserData() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_userKey);
+    await prefs.remove(_tokenKey);
+  }
 
   // Fetch user profile from API
   static Future<Map<String, dynamic>> fetchUserProfile() async {
     try {
       final token = await getToken();
       if (token == null) {
-        print('UserService: No authentication token found');
         return {
           'error': true,
           'message': 'No authentication token found',
         };
       }
-      print('UserService: Fetching user profile with token: ${token.substring(0, 10)}...');
       final response = await http.get(
         Uri.parse(Api.path('/user')),
         headers: {
@@ -79,15 +77,11 @@ import 'package:shared_preferences/shared_preferences.dart';
         },
       );
 
-      print('UserService: Profile response status: ${response.statusCode}');
-      print('UserService: Profile response body: ${response.body}');
-
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return data;
         
       } else {
-        print('UserService: Profile fetch failed with status ${response.statusCode}');
         return {
           'error': true,
           'message': 'Failed to fetch user profile',
@@ -103,12 +97,14 @@ import 'package:shared_preferences/shared_preferences.dart';
     }
   }
 
-  static Future<Map<String, dynamic>> updateProfile({
-    String? name,
+static Future<Map<String, dynamic>> updateProfile({
+    String? firstName,
+    String? lastName,
+    String? middleInitial,
     String? email,
-    String? contact_number,
-    String? sex,   // "0" or "1"
-    String? role,  // optional
+    String? contactNumber,
+    // String? address,
+    String? sex, 
     File? avatar,
   }) async {
     try {
@@ -117,17 +113,19 @@ import 'package:shared_preferences/shared_preferences.dart';
 
       final uri = Uri.parse(Api.path('/me/update'));
       final request = http.MultipartRequest("POST", uri);
-      request.fields['_method'] = 'PUT';
+      // request.fields['_method'] = 'PUT';
       request.headers.addAll({
         'Accept': 'application/json',
         'Authorization': 'Bearer $token',
       });
 
-      if (name != null) request.fields['name'] = name;
+      if (firstName != null) request.fields['first_name'] = firstName;
+      if (lastName != null) request.fields['last_name'] = lastName;
+      if (middleInitial != null) request.fields['middle_initial'] = middleInitial;
       if (email != null) request.fields['email'] = email;
-      if (contact_number != null) request.fields['contact_number'] = contact_number;
+      if (contactNumber != null) request.fields['contact_number'] = contactNumber;
+      // if (address != null) request.fields['address'] = address;
       if (sex != null) request.fields['sex'] = sex;
-      if (role != null) request.fields['role'] = role;
 
       if (avatar != null) {
         request.files.add(await http.MultipartFile.fromPath('profile_picture', avatar.path));
@@ -135,6 +133,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
+
+      print("Response body: ${response.body}");
 
       if (response.statusCode == 200) {
 
@@ -262,6 +262,7 @@ import 'package:shared_preferences/shared_preferences.dart';
                     'data': data,
                     'user': user,
                   };
+                  
                 } else {
                   print('UserService: Profile fetch failed: ${profileResult['message']}');
                 }
@@ -297,29 +298,17 @@ import 'package:shared_preferences/shared_preferences.dart';
         }
       }
 
-  // Logout user and clear data
-  // static Future<void> logout() async {
-  //   final token = await getToken();
-
-  //   if (token != null) {
-  //     await http.post(
-  //       Uri.parse(Api.path('/auth/logout')),
-  //       headers: {'Authorization': 'Bearer $token'},
-  //     );
-  //   }
-
-  //   final prefs = await SharedPreferences.getInstance();
-  //   await prefs.clear();
-
-  // }
-
-  // Logout user and clear data fast
+  // Logout 
 static Future<void> logout() async {
   final prefs = await SharedPreferences.getInstance();
+  String? firstName = prefs.getString('flutter.first_name');
   final token = prefs.getString(_tokenKey);
 
-  // 1. Clear storage immediately (instant logout)
-  await prefs.clear();
+   await prefs.clear();
+
+   if (firstName != null) {
+    await prefs.setString('flutter.first_name', firstName);
+  }
 
   // 2. Fire & forget server logout
   if (token != null) {

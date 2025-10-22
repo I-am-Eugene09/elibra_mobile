@@ -1,3 +1,7 @@
+import 'package:elibra_mobile/assets.dart';
+import 'package:elibra_mobile/authentication/otp.dart';
+import 'package:elibra_mobile/authentication/patron_signup.dart';
+import 'package:elibra_mobile/authentication/patron_signup.dart';
 import 'package:elibra_mobile/bottom_nav.dart';
 import 'package:flutter/material.dart';
 import 'package:elibra_mobile/profile/profile_page.dart';
@@ -10,6 +14,7 @@ import 'sections/general_section.dart';
 import 'sections/serial_section.dart';
 import 'sections/thesis_section.dart';
 import 'services/user_services.dart';
+import 'authentication/users.dart';
 import 'package:elibra_mobile/bottom_nav.dart';
 
 void main() {
@@ -42,21 +47,41 @@ class MyApp extends StatelessWidget {
           title: 'My App',
           debugShowCheckedModeBanner: false,
           theme: ThemeData(
+            inputDecorationTheme: const InputDecorationTheme(
+              labelStyle: TextStyle(color: AppColors.textColor),
+              floatingLabelStyle: TextStyle(color: AppColors.primaryGreen),
+              focusedBorder: UnderlineInputBorder(
+                borderSide: BorderSide(color: AppColors.primaryGreen, width: 2),
+              )
+            ),
             fontFamily: 'Poppins',
           ),
           // initialRoute: isAuth? 'home' : '/login',
           home: isAuth ? const BottomNav() : const PatronLoginPage(),
           routes: {
+            //Auth Routes
             '/login': (context) => const PatronLoginPage(),
+            '/register_patron': (context) => const PatronSignUpPage(patronType: 2),
+            '/select_account': (context) => const AccountTypeSelectionPage(),
+
+            //Fetching Data
             '/profile': (context) => const ProfilePage(),
             '/eresources': (context) => const EResources(),
             '/access': (context) => const AccessResources(),
             '/borrowed_history': (context) => const BorrowedHistory(),
+
+            //Transactions
             '/fines': (context) => const FinesPage(),
+
+            //OPAC
             '/general': (context) => const GeneralSectionPage(),
             '/serial': (context) => const SerialSectionPage(),
             '/thesis': (context) => const ThesisSectionPage(),
+
+            //mainPage
             '/home': (context) => const BottomNav(),
+
+
           },
         );
       },

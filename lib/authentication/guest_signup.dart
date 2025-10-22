@@ -10,7 +10,6 @@ import 'package:elibra_mobile/assets.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class PatronSignUpPage extends StatefulWidget {
   final int patronType;
@@ -111,6 +110,7 @@ class _PatronSignUpPageState extends State<PatronSignUpPage> {
         firstName: _firstNameController.text.trim(),
         lastName: _lastNameController.text.trim(),
         sex: sexValue,
+        // campusId: widget.patronType == 3 ? null : int.parse(_selectedCampus!),
         campusId: widget.patronType == 3 ? null : int.parse(_selectedCampus!),
         idnumber: _idnumberController.text.trim(),
         email: _emailController.text.trim(),
@@ -122,11 +122,6 @@ class _PatronSignUpPageState extends State<PatronSignUpPage> {
       );
 
       if (result['error'] == false) {
-
-      final prefs = await SharedPreferences.getInstance();
-      final firstName = _firstNameController.text.trim(); 
-      await prefs.setString('flutter.first_name', firstName); // To display first_name locally
-
         final data = result['data'] ?? {};
         final String? token = data['access_token'] as String?;
 
@@ -403,7 +398,7 @@ Widget _buildStepTwo() {
             (widget.patronType == 3)
               ? TextField(
                 controller: _OrganizationalController,
-                decoration: const InputDecoration( labelText: 'Campus Name'),
+                decoration: const InputDecoration( labelText: 'Organization Name: '),
                 textCapitalization: TextCapitalization.words,
               )
             : // Campus dropdown

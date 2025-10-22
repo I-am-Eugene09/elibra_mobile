@@ -10,7 +10,6 @@ class FetchDataService {
   static Future<Map<String, dynamic>> getCampuses() async {
     try {
       final url = Api.path('/all-c');
-      Api.debugLog('GET $url');
       final response = await http.get(
         Uri.parse(url),
         headers: const {
@@ -21,10 +20,13 @@ class FetchDataService {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
+
         return {
           'error': false,
-          'data': List<Map<String, dynamic>>.from(data),
+          'data': data,
+          'campuses' : data['data'] ?? [] // to access campuses directly
         };
+
       } else {
         return {
           'error': true,

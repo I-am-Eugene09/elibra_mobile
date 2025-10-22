@@ -57,7 +57,6 @@ class ValidationDialogs {
       );
   }
 
-
   static void invalidCredentials(BuildContext context){
     showValidationDialog(
       context, 
@@ -67,16 +66,37 @@ class ValidationDialogs {
       );
   }
 
+  static void EmailExist(BuildContext context){
+    showValidationDialog(
+      context,
+      "Email Already Taken!",
+      title: "Email Exist",
+      svgAsset: "assets/images/invalid_credentials.svg",
+    );
+  }
+
+  static void passwordNotMatch(BuildContext context){
+    // showValidationDialog(context, "The passwords you entered do not match. Please try again.", title: "Password Mismatch");
+    showValidationDialog(
+      context, 
+      "The passwords you entered do not match. Please try again.", 
+      title: "Password Mismatch",
+      svgAsset: "assets/images/invalid_credentials.svg",
+      );
+  }
+
   static void incorrectEmail(BuildContext context){
     showValidationDialog(context, "The email address you entered is not registered. Please check and try again.", title: "Email Not Found");
   }
 
-  static void passwordNotMatch(BuildContext context){
-    showValidationDialog(context, "The passwords you entered do not match. Please try again.", title: "Password Mismatch");
-  }
 
   static void pendingApproval(BuildContext context){
-    showValidationDialog(context, "Pending.", title: "Pending Approval");
+    showValidationDialog(
+      context, 
+      "Account is pending for registration approval.",
+      title: "Pending Approval",
+      svgAsset: "assets/images/Pending.svg",
+      );
   }
 
   static void genericError(BuildContext context) {

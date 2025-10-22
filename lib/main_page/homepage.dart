@@ -1,13 +1,25 @@
 //HOMEPAGE
 import 'package:elibra_mobile/assets.dart';
+import 'package:elibra_mobile/authentication/otp.dart';
+import 'package:elibra_mobile/e_resources/e_resources.dart';
+import 'package:elibra_mobile/fines/fines.dart';
 import 'package:elibra_mobile/loading.dart';
+import 'package:elibra_mobile/main_page/borrowed_history.dart';
+import 'package:elibra_mobile/profile/ebc.dart';
 import 'package:elibra_mobile/profile/update_profile.dart';
+import 'package:elibra_mobile/sections/general_section.dart';
+import 'package:elibra_mobile/sections/serial_section.dart';
+import 'package:elibra_mobile/sections/thesis_section.dart';
+import 'package:elibra_mobile/services/config_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:elibra_mobile/profile/profile_page.dart';
 import 'package:elibra_mobile/authentication/patron_login.dart';
 import 'package:elibra_mobile/models/user_model.dart';
 import 'package:elibra_mobile/services/user_services.dart';
+import 'package:intl/intl.dart';
+import 'dart:async';
+
 
 class Homepage extends StatefulWidget {
   const Homepage({super.key});
@@ -20,10 +32,40 @@ class _HomepageState extends State<Homepage> {
   User? _user;
   bool _isLoading = true;
 
+  String _today = "";
+  String _currentTime = "";
+  Timer? _timer;
+
   @override
   void initState() {
     super.initState();
     _loadUserData();
+    _setDate();
+    _Time();
+  }
+
+  void _setDate() {
+    final now = DateTime.now();
+    final formattedDate = DateFormat('MMM dd, yyyy - EEEE').format(now);
+    setState(() {
+      _today = formattedDate;
+    });
+
+  }
+
+  void _Time(){
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+    final now = DateTime.now();
+    setState(() {
+      _currentTime = DateFormat('hh:mm a').format(now);
+      });
+    });
+  }
+
+  @override
+  void dispose(){
+    _timer?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadUserData() async {
@@ -39,7 +81,8 @@ class _HomepageState extends State<Homepage> {
 
       // Then refresh from API
       final result = await UserService.fetchUserProfile();
-      if (result != null && result['id'] != null) {
+
+      if (result != null && result.isNotEmpty) {
         final user = User.fromJson(result);
         await UserService.saveUser(user);
         setState(() {
@@ -59,17 +102,194 @@ class _HomepageState extends State<Homepage> {
     }
   }
 
+Future<bool> isUserVerified() async {
+  final result = await UserService.fetchUserProfile();
+
+  if (result.isEmpty || result['error'] == true) {
+    return false; 
+  }
+
+  final userData = result['user'] ?? result;
+
+  return userData['email_verified_at'] != null;
+}
+
+
+Future<void> _showVerificationDialog(
+  String email,
+  String token,
+  BuildContext outerContext, // rename this to clarify it's from outside
+) async {
+  final confirm = await showDialog<bool>(
+    context: outerContext,
+    barrierDismissible: false,
+    builder: (dialogContext) => Dialog( // use dialogContext for this builder
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            // Title
+            const Text(
+              "Verify Your Account",
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 12),
+            Container(height: 2, color: AppColors.primaryGreen),
+            const SizedBox(height: 20),
+
+            // Info Text (centered)
+            const Text(
+              "Verifying your account gives you access to all the main features of E-Libra.\n\n"
+              "You can verify your account now or skip and verify later.",
+              style: TextStyle(
+                fontSize: 14,
+                height: 1.4,
+                color: AppColors.textColor,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            Container(height: 2, color: AppColors.primaryGreen),
+            const SizedBox(height: 16),
+
+            // Buttons Row
+            Row(
+              children: [
+                // Cancel
+                Expanded(
+                  child: TextButton(
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.red,
+                      padding: const EdgeInsets.symmetric(vertical: 18),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      side: BorderSide.none,
+                      backgroundColor: Colors.transparent,
+                    ),
+                    onPressed: () => Navigator.pop(dialogContext, false),
+                    child: const Text(
+                      "Cancel",
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: Colors.red,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+
+                // Verify Now
+                Expanded(
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primaryGreen,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 18),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    onPressed: () async {
+                      // ✅ close dialog using its own context
+                      Navigator.pop(dialogContext, true);
+
+                      // ✅ use outerContext for navigation/loading/dialogs
+                      showDialog(
+                        context: outerContext,
+                        barrierDismissible: false,
+                        builder: (_) => const CustomLoadingModal(
+                          message: "Sending OTP...",
+                        ),
+                      );
+
+                      try {
+                        final res = await ApiService.sendOTP(email, token);
+                        Navigator.pop(outerContext); // close loading safely
+
+                        if (res['error'] == false) {
+                          Navigator.push(
+                            outerContext,
+                            MaterialPageRoute(
+                              builder: (_) => OTPVerificationScreen(
+                                email: email,
+                                userToken: token,
+                                otpToken: res['data']['token'],
+                              ),
+                            ),
+                          );
+                        } else {
+                          ScaffoldMessenger.of(outerContext).showSnackBar(
+                            const SnackBar(
+                                content: Text('Failed to send OTP. Try again.')),
+                          );
+                        }
+                      } catch (e) {
+                        Navigator.pop(outerContext); // close loading safely
+                        ScaffoldMessenger.of(outerContext).showSnackBar(
+                          const SnackBar(
+                              content: Text('An unexpected error occurred.')),
+                        );
+                      }
+                    },
+                    child: const Text(
+                      "Verify Now!",
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+
+  if (confirm == false) {
+    print("User skipped verification.");
+  }
+}
+
+
+void _navigateWithVerification(BuildContext context, {Widget? page}) async {
+  if (_user == null) return;
+
+  final verified = await isUserVerified();
+
+  if (!verified) {
+    
+    final token = await UserService.getToken();
+     if (token == null) return;
+
+    await _showVerificationDialog(_user!.email, token, context);
+    return;
+  } 
+
+  if (page != null) {
+    Navigator.push(context, MaterialPageRoute(builder: (_) => page));
+  }
+} 
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.backgroundColor,
-
+  
       // ✅ Drawer
       drawer: Drawer(
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
-            DrawerHeader(
+            Container(
+               padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 20),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
@@ -91,11 +311,11 @@ class _HomepageState extends State<Homepage> {
                     child: CircleAvatar(
                       radius: 20,
                       backgroundColor: AppColors.primaryGreen,
-                      child: const Icon(
-                        Icons.library_books,
-                        color: Colors.white,
-                        size: 20,
-                      ),
+                      child: SvgPicture.asset(
+                        AppImages.logo,
+                        height: 32, width: 32,
+                        color: AppColors.backgroundColor,
+                      )
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -109,20 +329,21 @@ class _HomepageState extends State<Homepage> {
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
-                            color: AppColors.textColor,
+                            color: AppColors.primaryGreen,
                             letterSpacing: 0.5,
                           ),
                         ),
-                        SizedBox(height: 6),
+                        SizedBox(height: 2),
                         Text(
                           "Enhanced Integrated Library & Resource\nAutomation System",
                           style: TextStyle(
                             fontSize: 12,
-                            color: Color.fromRGBO(0, 0, 0, 0.541),
+                            // color: Color.fromRGBO(0, 0, 0, 0.541),
+                            color: AppColors.textColor,
                             height: 1.3,
                           ),
                         ),
-                      ],
+                      ],  
                     ),
                   ),
                 ],
@@ -146,14 +367,12 @@ class _HomepageState extends State<Homepage> {
               title: const Text("My e-Borrower Card"),
               trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.black54),
               onTap: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('e-Borrower Card feature coming soon!')),
-                );
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const  BorrowerCardPage()));
               },
             ),
 
             const Divider(),
-
+  
             ListTile(
               leading: const Icon(Icons.menu_book, color: AppColors.primaryGreen),
               title: const Text("OPAC"),
@@ -167,7 +386,7 @@ class _HomepageState extends State<Homepage> {
               title: const Text("E-Resources"),
               trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.black54),
               onTap: () {
-                Navigator.pushNamed(context, '/eresources');
+                  _navigateWithVerification(context, page:  const EResources());
               },
             ),
             ListTile(
@@ -314,47 +533,56 @@ class _HomepageState extends State<Homepage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 👤 Student Info Card
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  _today,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    color: AppColors.primaryGreen,
+                  ),
+                ),
+                Text(
+                  _currentTime,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    color: AppColors.primaryGreen,
+                  ),
+                ),
+              ],
+            ),
+            // Student Info Card
             Card(
               color: AppColors.primaryGreen.withOpacity(0.05),
+              margin: const EdgeInsets.symmetric(vertical: 8),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
               ),
               elevation: 0,
               child: Padding(
-                padding: const EdgeInsets.all(14),
+                // padding: const EdgeInsets.all(14),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: _user?.profilePicture != null
-                          ? Image.network(
-                              // _user!.profilePicture!,
-                              _user?.profilePicture?.url ?? "assets/images/Anya.jpg",
-                              width: 70,
-                              height: 70,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) {
-                                return Container(
-                                  width: 70,
-                                  height: 70,
-                                  color: AppColors.primaryGreen.withOpacity(0.1),
-                                  child: const Icon(
-                                    Icons.person,
-                                    size: 35,
-                                    color: AppColors.primaryGreen,
-                                  ),
-                                );
-                              },
-                            )
-                          : Image.asset(
-                              "assets/images/Anya.jpg",
-                              width: 70,
-                              height: 70,
-                              fit: BoxFit.cover,
-                            ),
-                    ),
+                        borderRadius: BorderRadius.circular(12),
+                        child: _user?.profilePicture != null
+                            ? Image.network(
+                                _user!.profilePicture!.url,
+                                width: 70,
+                                height: 70,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return _profilePlaceholder();
+                                },
+                              )
+                            : _profilePlaceholder(),
+                      ),
+
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
@@ -365,7 +593,7 @@ class _HomepageState extends State<Homepage> {
                             _isLoading
                                 ? "Loading..."
                                 : _user != null
-                                    ? "${_user!.greeting}, ${_user!.name}!"
+                                    ? "${_user!.greeting}👋, ${_user!.first_name} ${_user!.last_name}!"
                                     : "Hello 👋, Guest!",
                             style: const TextStyle(
                               fontWeight: FontWeight.w600,
@@ -373,35 +601,64 @@ class _HomepageState extends State<Homepage> {
                               color: AppColors.textColor,
                             ),
                           ),
-                          const SizedBox(height: 4),
-
-                          // Static Borrower's Card ID
-                          const Text(
-                            "Borrower's Card ID: 2025-00001",
-                            style: TextStyle(fontSize: 12, color: Colors.black54),
-                          ),
-                          const SizedBox(height: 4),
-
-                          // Sex (Fetched from API)
-                          Text(
-                            _isLoading
-                                ? "Loading..."
-                                : _user != null
-                                    ? "Sex: ${_user!.sex == "1" ? "Male" : "Female"}"
-                                    : "Sex: Unknown",
-                            style: const TextStyle(fontSize: 12, color: Colors.black54),
-                          ),
-                          const SizedBox(height: 4),
-
-                          // Campus (Fetched)
-                          Text(
-                            _isLoading
-                                ? "Loading..."
-                                : _user != null
-                                    // ? _user!.campus ?? "Unknown Campus!"
-                                    ? _user?.campus?.campus ?? "Unknown Campus!"
-                                    : "Please log in",
-                            style: const TextStyle(fontSize: 12, color: Colors.black54),
+                          const SizedBox(height: 8),
+                          // ID number (Fetched from API)
+                        _isLoading
+                            ? const Text(
+                                "Loading...",
+                                style: TextStyle(fontSize: 12, color: AppColors.textColor,  fontWeight: FontWeight.bold),
+                              )
+                            : (_user?.id_number != null && _user!.id_number!.isNotEmpty)
+                                ? RichText(
+                                    text: TextSpan(
+                                      style: const TextStyle(fontSize: 12, color: AppColors.textColor,  fontWeight: FontWeight.w500),
+                                        children: [
+                                          const TextSpan(
+                                            text: "ID Number: ",
+                                            style: TextStyle(fontWeight: FontWeight.bold), // medium weight
+                                          ),
+                                          TextSpan(text: _user!.id_number),
+                                        ],
+                                      ),
+                                    )
+                                  : const Text(
+                                      "No ID Number!",
+                                      style: TextStyle(fontSize: 12, color: AppColors.textColor),
+                                    ),
+                          const SizedBox(height: 6),
+                // Campus (Fetched)
+                _isLoading
+                    ? const Text(
+                        "Loading...",
+                        style: TextStyle(fontSize: 12, color: AppColors.textColor),
+                      )
+                    : (_user == null)
+                        ? const Text(
+                            "Please log in",
+                            style: TextStyle(fontSize: 12, color: AppColors.textColor),
+                          )
+                        : RichText(
+                            text: TextSpan(
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textColor,
+                              ),
+                              children: [
+                                const TextSpan(
+                                  text: "Campus: ",
+                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                                TextSpan( 
+                                  text: _user!.patron_type == 3
+                                      ? (_user!.external_organization?.isNotEmpty == true
+                                          ? _user!.external_organization
+                                          : "Not Specified!")
+                                      : (_user!.campus != null
+                                          ? _user!.campus!.name
+                                          : "Not Specified"),
+                                ),
+                              ],
+                            ),
                           ),
                         ],
                       ),
@@ -429,13 +686,16 @@ class _HomepageState extends State<Homepage> {
                 padding: const EdgeInsets.only(left: 4, right: 16),
                 children: [
                   _featureCard(Icons.menu_book, "E-Resources", onTap: () {
-                    Navigator.pushNamed(context, '/eresources');
+                    // Navigator.pushNamed(context, '/eresources');
+                    _navigateWithVerification(context, page: EResources());
                   }),
                   _featureCard(Icons.money, "Fines", onTap: () {
-                    Navigator.pushNamed(context, '/fines');
+                    // Navigator.pushNamed(context, '/fines');
+                    _navigateWithVerification(context, page: FinesPage());
                   }),
                   _featureCard(Icons.history, "Borrowed History", onTap: () {
-                    Navigator.pushNamed(context, '/borrowed_history');
+                    // Navigator.pushNamed(context, '/borrowed_history');
+                    _navigateWithVerification(context, page: BorrowedHistory());
                   }),
                   _featureCard(Icons.offline_pin, "Offline Access", onTap: () {
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -458,9 +718,10 @@ class _HomepageState extends State<Homepage> {
                 )),
             const SizedBox(height: 12),
 
-            _sectionCard(context, "Thesis Section", "/thesis"),
-            _sectionCard(context, "General Section", "/general"),
-            _sectionCard(context, "Serial Section", "/serial"),
+            _sectionCard("Thesis Section", () => _navigateWithVerification(context, page: const ThesisSectionPage())),
+            _sectionCard("General Section", () => _navigateWithVerification(context, page: const GeneralSectionPage())),
+            _sectionCard("Serial Section", () => _navigateWithVerification(context, page: const SerialSectionPage())),
+
           ],
         ),
       ),
@@ -531,7 +792,7 @@ class _HomepageState extends State<Homepage> {
   }
 
   // 🔧 Section Card
-  static Widget _sectionCard(BuildContext context, String title, String route) {
+  static Widget _sectionCard(String title, VoidCallback onTap) {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8),
       decoration: BoxDecoration(
@@ -584,9 +845,7 @@ class _HomepageState extends State<Homepage> {
             color: AppColors.primaryGreen,
           ),
         ),
-        onTap: () {
-          Navigator.pushNamed(context, route);
-        },
+        onTap: onTap
       ),
     );
   }
@@ -604,4 +863,35 @@ class _HomepageState extends State<Homepage> {
         return Icons.folder;
     }
   }
+
+static Widget _getPageFromRoute(String route) {
+  switch (route) {
+    case '/thesis':
+      return const ThesisSectionPage(); 
+    case '/general':
+      return const GeneralSectionPage();
+    case '/serial':
+      return const SerialSectionPage();
+    default:
+      return const Homepage();
+  }
+}
+
+
+Widget _profilePlaceholder() {
+  return Container(
+    width: 70,
+    height: 70,
+    decoration: BoxDecoration(
+      color: AppColors.primaryGreen.withOpacity(0.1),
+      borderRadius: BorderRadius.circular(12),
+    ),
+    child: const Icon(
+      Icons.person,
+      size: 35,
+      color: AppColors.primaryGreen,
+    ),
+  );
+}
+
 }
